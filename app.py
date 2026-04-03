@@ -22,29 +22,37 @@ def analyze():
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    # 🔥 Replace BOTH model computations with API call
     response = requests.post(API_URL, headers=HEADERS, json={"inputs": text})
     result = response.json()
 
-    # Convert HF output to SAME format as before
-    scores = result[0]
+    print("HF RESPONSE:", result)  # 🔍 debug
 
-    # Map labels to match your previous ["negative","neutral","positive"]
-    label_map = {
-        "LABEL_0": "negative",
-        "LABEL_1": "neutral",
-        "LABEL_2": "positive"
-    }
+    # ✅ HANDLE ERRORS (IMPORTANT)
+    if isinstance(result, dict) and "error" in result:
+        return jsonify({"error": result["error"]}), 500
 
-    best = max(scores, key=lambda x: x['score'])
+    try:
+        scores = result[0]
 
-    sentiment = label_map.get(best['label'], best['label'])
-    confidence = round(best['score'], 3)
+        label_map = {
+            "LABEL_0": "negative",
+            "LABEL_1": "neutral",
+            "LABEL_2": "positive"
+        }
 
-    return jsonify({
-        "sentiment": sentiment,
-        "confidence": confidence
-    })
+        best = max(scores, key=lambda x: x['score'])
+
+        sentiment = label_map.get(best['label'], best['label'])
+        confidence = round(best['score'], 3)
+
+        return jsonify({
+            "sentiment": sentiment,
+            "confidence": confidence
+        })
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        return jsonify({"error": "Processing failed"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
