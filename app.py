@@ -1,17 +1,14 @@
 from flask import Flask, request, jsonify, render_template
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import torch
+import requests
+import os
 
 app = Flask(__name__)
 
-# Load models once
-model1_name = "cardiffnlp/twitter-roberta-base-sentiment"
-model2_name = "nlptown/bert-base-multilingual-uncased-sentiment"
-
-model1 = AutoModelForSequenceClassification.from_pretrained(model1_name)
-model2 = AutoModelForSequenceClassification.from_pretrained(model2_name)
-tokenizer1 = AutoTokenizer.from_pretrained(model1_name)
-tokenizer2 = AutoTokenizer.from_pretrained(model2_name)
+# Replace local models with HF API
+API_URL = "https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment"
+HEADERS = {
+    "Authorization": f"Bearer {os.getenv('HF_TOKEN')}"
+}
 
 @app.route("/")
 def home():
@@ -25,34 +22,24 @@ def analyze():
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    # Tokenize inputs
-    inputs1 = tokenizer1(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-    inputs2 = tokenizer2(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+    # 🔥 Replace BOTH model computations with API call
+    response = requests.post(API_URL, headers=HEADERS, json={"inputs": text})
+    result = response.json()
 
-    # Get logits
-    outputs1 = model1(**inputs1).logits
-    outputs2 = model2(**inputs2).logits
+    # Convert HF output to SAME format as before
+    scores = result[0]
 
-    # Convert to probabilities
-    probs1 = torch.softmax(outputs1, dim=-1)
-    probs2 = torch.softmax(outputs2, dim=-1)
+    # Map labels to match your previous ["negative","neutral","positive"]
+    label_map = {
+        "LABEL_0": "negative",
+        "LABEL_1": "neutral",
+        "LABEL_2": "positive"
+    }
 
-    # Map 5→3 class for model2
-    neg = probs2[:, 0] + probs2[:, 1]
-    neu = probs2[:, 2]
-    pos = probs2[:, 3] + probs2[:, 4]
-    probs2_mapped = torch.stack([neg, neu, pos], dim=1)
+    best = max(scores, key=lambda x: x['score'])
 
-    # Average predictions
-    combined_probs = (probs1 + probs2_mapped) / 2
-    combined_probs = torch.pow(combined_probs, 1.2)  # amplify middle confidence
-    combined_probs = combined_probs / combined_probs.sum()
-
-    labels = ["negative", "neutral", "positive"]
-
-    idx = torch.argmax(combined_probs, dim=-1).item()
-    sentiment = labels[idx]
-    confidence = round(combined_probs[0][idx].item(), 3)
+    sentiment = label_map.get(best['label'], best['label'])
+    confidence = round(best['score'], 3)
 
     return jsonify({
         "sentiment": sentiment,
