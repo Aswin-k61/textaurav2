@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 # Replace local models with HF API
-API_URL = "https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment"
+API_URL = "https://router.huggingface.co/hf-inference/models/cardiffnlp/twitter-roberta-base-sentiment"
 HEADERS = {
     "Authorization": f"Bearer {os.getenv('HF_TOKEN')}"
 }
@@ -22,7 +22,7 @@ def analyze():
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    response = requests.post(API_URL, headers=HEADERS, json={"inputs": text})
+    response = requests.post(API_URL, headers=HEADERS, json={"inputs": text},timeout=10)
     result = response.json()
 
     print("HF RESPONSE:", result)  # 🔍 debug
