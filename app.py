@@ -53,6 +53,9 @@ def analyze():
     except Exception as e:
         print("ERROR:", str(e))
         return jsonify({"error": "Processing failed"}), 500
+@app.route("/health")
+def health():
+    return "OK", 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
