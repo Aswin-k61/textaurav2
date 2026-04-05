@@ -1,10 +1,13 @@
 from flask import Flask, request, jsonify, render_template
 import requests
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 
 # Replace local models with HF API
+N8N_WEBHOOK_URL = "https://n8n-service-wa6q.onrender.com/webhook/sentiment-alert"
+
 API_URL = "https://router.huggingface.co/hf-inference/models/cardiffnlp/twitter-roberta-base-sentiment"
 HEADERS = {
     "Authorization": f"Bearer {os.getenv('HF_TOKEN')}"
@@ -45,6 +48,9 @@ def analyze():
         sentiment = label_map.get(best['label'], best['label'])
         confidence = round(best['score'], 3)
 
+        if sentiment.lower() == "negative":
+            send_to_n8n(text, sentiment, confidence)
+
         return jsonify({
             "sentiment": sentiment,
             "confidence": confidence
@@ -56,6 +62,20 @@ def analyze():
 @app.route("/health")
 def health():
     return "OK", 200
+
+def send_to_n8n(text, sentiment, confidence):
+    data = {
+        "text": text,
+        "sentiment": sentiment,
+        "score": confidence,
+        "time": datetime.now().isoformat()
+    }
+
+    try:
+        requests.post(N8N_WEBHOOK_URL, json=data, timeout=5)
+        print("Sent to n8n")
+    except Exception as e:
+        print("n8n error:", e)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
