@@ -6,7 +6,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Replace local models with HF API
-N8N_WEBHOOK_URL = "https://n8n-service-wa6q.onrender.com/webhook/sentiment-alert"
+N8N_WEBHOOK_URL = "https://n8n-service-wa6q.onrender.com/webhook-test/sentiment-alert"
 
 API_URL = "https://router.huggingface.co/hf-inference/models/cardiffnlp/twitter-roberta-base-sentiment"
 HEADERS = {
