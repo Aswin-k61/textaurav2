@@ -48,7 +48,8 @@ def analyze():
         sentiment = label_map.get(best['label'], best['label'])
         confidence = round(best['score'], 3)
 
-        send_to_n8n(text, sentiment, confidence)
+        if sentiment.lower() in ["negative", "neutral", "positive"]:
+            send_to_n8n(text, sentiment, confidence)
 
         return jsonify({
             "sentiment": sentiment,
